@@ -36,9 +36,16 @@ jobs:
         ./build_kernel.sh
       working-directory: kernel_root
       
-    - name: Upload artifacts
+    - name: Upload AnyKernel3 ZIP
       uses: actions/upload-artifact@v4
       with:
-        name: AnyKernel3-${{ inputs.BRANCH }}-$date
+        name: AnyKernel3-${{ inputs.BRANCH }}
         path: |
           kernel_root/result/ak/*
+
+    - name: Upload Output
+      uses: actions/upload-artifact@v4
+      with:
+        name: Kernel-Output
+        path: | 
+          kernel_root/out/arch/arm64/boot/*
