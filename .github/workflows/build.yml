@@ -32,20 +32,15 @@ jobs:
         
     - name: Build Kernel
       run: |
-        chmod +x *.sh
-        ./build_kernel.sh
-      working-directory: kernel_root
-      
-    - name: Upload AnyKernel3 ZIP
-      uses: actions/upload-artifact@v4
-      with:
-        name: AnyKernel3-${{ inputs.BRANCH }}
-        path: |
-          kernel_root/result/ak/*
+        if [ ! -d "clang" ]; then
+          curl -LSs https://raw.githubusercontent.com/rufnx/personal_patch/master/clang.sh | bash 12 clang
+        else
+          echo "clang found, skip fetching clang"
+        fi
 
-    - name: Upload Output
-      uses: actions/upload-artifact@v4
-      with:
-        name: Kernel-Output
-        path: | 
-          kernel_root/out/arch/arm64/boot/*
+        if [ ! -d "gcc" ]; then
+          curl -LSs https://raw.githubusercontent.com/rufnx/toolchains/README/clone.sh | bash androidcc-4.9 gcc
+        else
+          echo "gcc found, skip fetching gcc"
+        fi
+      working-directory: kernel_root
