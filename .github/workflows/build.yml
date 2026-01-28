@@ -1,4 +1,4 @@
-name: Build Kernel Samsung A22 5G
+name: Build Kernel
 on:
   workflow_dispatch:
     inputs:
