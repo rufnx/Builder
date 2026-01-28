@@ -28,7 +28,7 @@ jobs:
       - name: Checkout kernel source
         uses: actions/checkout@v4
         with:
-          repository: "${{ github.actor }}/kernel_samsung_a22x"
+          repository: "${{ github.actor }}/kernel_samsung_a32x"
           ref: ${{ inputs.BRANCH }}
           show-progress: false
           path: rootdir
@@ -49,7 +49,7 @@ jobs:
 
           if [[ "${{ inputs.KSU }}" == "true" ]]; then
             echo ">> Applying KernelSU patch"
-            curl -LSs https://raw.githubusercontent.com/${{ github.actor }}/personal_patch/master/a22x.patch | patch -p1
+            curl -LSs https://raw.githubusercontent.com/${{ github.actor }}/personal_patch/master/a32x.patch | patch -p1
             curl -LSs https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh | bash -s legacy
           else
             echo ">> Non-KernelSU build"
