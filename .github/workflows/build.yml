@@ -14,6 +14,10 @@ on:
         description: Defconfig kernel
         default: 'a22x_defconfig'
         required: true
+      KSU:
+        description: KernelSU Support
+        type: boolean
+        default: false
         
 jobs:
   build:
@@ -35,6 +39,11 @@ jobs:
       run: git clone --depth=1 --single-branch -b ${{ inputs.BRANCH }} https://github.com/${{ inputs.REPO }} kernel_root
       working-directory: rootdir
 
+    - name: Fetching KernelSU ( opsional )
+      if: ${{ inputs.KSU }} == 'true'
+      run: |
+        curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s legacy
+
     - name: Prepare dependencies
       run: |
         sudo apt update -y
@@ -48,8 +57,18 @@ jobs:
         cd toolchains
         if [ ! -d "$(pwd)/clang" ]; then
           git clone --depth=1 https://github.com/rufnx/toolchains.git -b clang-11 clang
-          git clone --depth=1 https://github.com/rufnx/toolchains.git -b androidcc-4.9 gcc
-          git clone --depth=1 https://github.com/rufnx/toolchains.git -b arm-gnu arm
+          
+          if [ ! -d "$(pwd)/gcc" ]; then
+            git clone --depth=1 https://github.com/rufnx/toolchains.git -b androidcc-4.9 gcc
+          else
+            echo "Android CC 4.9 Found, Continue"
+          fi
+          if [ ! -d "$(pwd)/arm" ]; then
+            git clone --depth=1 https://github.com/rufnx/toolchains.git -b arm-gnu arm
+          else
+            echo "Arm Found, Continue...."
+          fi
+          
           echo "Toolchains fetched successfully"
         else
           echo "Toolchains already exist, skipping..."
