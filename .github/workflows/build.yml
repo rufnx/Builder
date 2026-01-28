@@ -5,11 +5,11 @@ on:
     inputs:
       BRANCH:
         description: Kernel branch
-        default: master
+        default: 'master'
         required: true
       DEFCONFIG:
         description: Defconfig kernel
-        default: rufnx_defconfig
+        default: 'rufnx_defconfig'
         required: true
       KSU:
         description: KernelSU Support
@@ -26,7 +26,7 @@ jobs:
       - name: Checkout kernel source
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.actor }}/kernel_samsung_a22x
+          repository: "${{ github.actor }}/kernel_samsung_a22x"
           ref: ${{ inputs.BRANCH }}
           path: rootdir
           fetch-depth: 1
