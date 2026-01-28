@@ -5,7 +5,7 @@ on:
     inputs:
       BRANCH:
         description: Kernel branch
-        default: 'master'
+        default: 'main'
         required: true
       DEFCONFIG:
         description: Defconfig kernel
