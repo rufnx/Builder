@@ -1,104 +1,107 @@
 name: Build Kernel
+
 on:
   workflow_dispatch:
     inputs:
       BRANCH:
         description: Kernel branch
-        default: 'master'
+        default: master
         required: true
       DEFCONFIG:
         description: Defconfig kernel
-        default: 'rufnx_defconfig'
+        default: rufnx_defconfig
         required: true
       KSU:
         description: KernelSU Support
         type: boolean
         default: false
-        
+
 jobs:
   build:
-    runs-on: ubuntu-22.04
-    environment: Build From ${{ github.actor }}
+    runs-on: ubuntu-latest
+    environment: Build Kernel From ${{ github.actor }}
+
     steps:
     
-    - name: Get date & fix date
-      id: rundate
-      run: sudo rm /etc/localtime && sudo ln -s /usr/share/zoneinfo/Asia/Jakarta /etc/localtime && echo "REPO_DATE=`date`" >> $GITHUB_OUTPUT
-    
-    - uses: actions/checkout@v4
-      with:
-        repository: '${{ github.actor }}/kernel_samsung_a22x'
-        reff: '${{ inputs.BRANCH }}'
-        path: rootdir
-        show-progress: false
-        fetch-depth: 1
-        
-    - name: Prepare dependencies
-      run: |
-        sudo apt update -y
-        sudo apt install bc cpio flex bison aptitude git python-is-python3 tar perl wget jq curl lz4 -y
-        sudo aptitude install libssl-dev -y
-    
-    - name: Fetching Toolchains
-      working-directory: rootdir
-      run: |
-        if [ ${{inputs.KSU }} == 'true' ]; then
-          curl -LSs "https://raw.githubusercontent.com/${{ github.actor }}/personal_patch/master/a22x.patch | patch -p1
-          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s legacy
-        else
-          echo "Not KernelSU Variant"
-        fi
-        
-        mkdir -p toolchains
-        cd toolchains
-        if [ ! -d "$(pwd)/clang" ]; then
-          git clone --depth=1 https://github.com/rufnx/toolchains.git -b clang-11 clang
-          
-          if [ ! -d "$(pwd)/gcc" ]; then
+      - name: Checkout kernel source
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.actor }}/kernel_samsung_a22x
+          ref: ${{ inputs.BRANCH }}
+          path: rootdir
+          fetch-depth: 1
+
+      - name: Prepare dependencies
+        run: |
+          sudo apt update -y
+          sudo apt install -y \
+            bc cpio flex bison git python-is-python3 \
+            tar perl wget jq curl lz4 \
+            libssl-dev
+
+      - name: Fetch toolchains & KernelSU
+        working-directory: rootdir
+        run: |
+          set -e
+
+          if [[ "${{ inputs.KSU }}" == "true" ]]; then
+            echo ">> Applying KernelSU patch"
+            curl -LSs https://raw.githubusercontent.com/${{ github.actor }}/personal_patch/master/a22x.patch | patch -p1
+            curl -LSs https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh | bash -s legacy
+          else
+            echo ">> Non-KernelSU build"
+          fi
+
+          mkdir -p toolchains
+          cd toolchains
+
+          if [ ! -d clang ]; then
+            git clone --depth=1 https://github.com/rufnx/toolchains.git -b clang-11 clang
+          fi
+
+          if [ ! -d gcc ]; then
             git clone --depth=1 https://github.com/rufnx/toolchains.git -b androidcc-4.9 gcc
-          else
-            echo "Android CC 4.9 Found, Continue"
           fi
-          if [ ! -d "$(pwd)/arm" ]; then
+
+          if [ ! -d arm ]; then
             git clone --depth=1 https://github.com/rufnx/toolchains.git -b arm-gnu arm
-          else
-            echo "Arm Found, Continue...."
           fi
+
+          echo ">> Toolchains ready"
+
+      - name: Build kernel
+        working-directory: rootdir
+        run: |
+          set -e
           
-          echo "Toolchains fetched successfully"
-        else
-          echo "Toolchains already exist, skipping..."
-        fi
+          export PATH=$(pwd)/toolchains/clang/bin:$PATH
+          export CROSS_COMPILE=$(pwd)/toolchains/gcc/bin/aarch64-linux-android-
+          export CROSS_COMPILE_COMPAT=$(pwd)/toolchains/arm/bin/arm-linux-gnueabi-
 
-    - name: Build Kernel
-      working-directory: rootdir
-      run: |
-        export CROSS_COMPILE=$(pwd)/toolchains/gcc/bin/aarch64-linux-android-
-        export CROSS_COMPILE_COMPAT=$(pwd)/toolchains/arm/bin/arm-linux-gnueabi-
-        export PATH=$(pwd)/toolchains/clang/bin:$PATH
-        export KCFLAGS=-w
+          echo ">> Generate defconfig"
+          make O=out ${{ inputs.DEFCONFIG }}
 
-        # Generate Defconfig
-        make ARCH=arm64 O=out ${{ inputs.DEFCONFIG }}
+          echo ">> Compile kernel"
+          make O=out -j$(nproc --all) LLVM=1 LLVM_IAS=1
 
-        # Compile Kernel
-        make ARCH=arm64 O=out -j$(nproc --all) LLVM=1 LLVM_IAS=1
+          if [ ! -f out/arch/arm64/boot/Image.gz ]; then
+            echo "Build failed"
+            exit 1
+          fi
 
-        # Check build result
-        if [ ! -f "out/arch/arm64/boot/Image.gz" ]; then
-          echo "Build Failed, Exiting"
-          exit 1
-        else
-          echo "Build Success"
-          echo "Continue to packaging with AnyKernel3"
-        fi
+          echo "Kernel build success"
 
-        git clone --depth=1 https://github.com/rufnx/anykernel.git -b a22x anykernel
-        cp out/arch/arm64/boot/Image.gz anykernel/
-        
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        path: rootdir/anykernel/*
-        name: AnyKernel3-${{ github.actor_id }}
-        compression-level: 9
+          git clone --depth=1 https://github.com/rufnx/anykernel.git -b a22x anykernel
+          cp out/arch/arm64/boot/Image.gz anykernel/
+
+      - name: kernelversion
+        working-directory: rootdir/out/arch/arm64/boot
+        run: |
+          zcat "Image.gz" | strings | grep "Linux version"
+
+      - name: Upload AnyKernel3
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnyKernel3-${{ github.run_number }}
+          path: rootdir/anykernel/*
+          compression-level: 9
