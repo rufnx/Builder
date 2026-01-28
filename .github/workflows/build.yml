@@ -94,7 +94,7 @@ jobs:
 
           echo "Kernel build success"
 
-          git clone --depth=1 https://github.com/rufnx/anykernel.git -b a22x anykernel
+          git clone --depth=1 https://github.com/rufnx/anykernel.git -b a32x anykernel
           cp out/arch/arm64/boot/Image.gz anykernel/
 
       - name: kernelversion
