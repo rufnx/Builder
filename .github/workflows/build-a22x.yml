@@ -18,6 +18,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    environment: Build From ${{ github.actor }}
     steps:
     
     - name: Get date & fix date
@@ -87,5 +88,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         path: rootdir/kernel_root/anykernel/*
-        name: AnyKernel3-${{ github.run_number }}
+        name: AnyKernel3-${{ github.actor_id }}
         compression-level: 9
