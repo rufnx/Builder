@@ -18,16 +18,19 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     environment: Build Kernel From ${{ github.actor }}
-
     steps:
-    
+      - name: Get date
+        id: rundate
+        run: sudo rm /etc/localtime && sudo ln -s /usr/share/zoneinfo/Asia/Jakarta /etc/localtime && echo "REPO_DATE=`date`" >> $GITHUB_OUTPUT
+      
       - name: Checkout kernel source
         uses: actions/checkout@v4
         with:
           repository: "${{ github.actor }}/kernel_samsung_a22x"
           ref: ${{ inputs.BRANCH }}
+          show-progress: false
           path: rootdir
           fetch-depth: 1
 
